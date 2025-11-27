@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Professional desktop file converter with support for PDF, Office, images, and more",
   "main": "dist/main/main.js",
-  "author": "Martin Sack <martin@example.com>",
+  "author": "Martin Sack <lennyymartin773@gmail.com>",
   "license": "MIT",
   "scripts": {
     "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
