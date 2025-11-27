@@ -185,8 +185,8 @@ MIT License - see LICENSE file for details
 ## 🌐 Links
 
 - **Web Version**: https://martinsfile-converter.vercel.app/
-- **GitHub**: [Your Repository URL]
-- **Issues**: [Your Issues URL]
+- **GitHub**: https://github.com/martin-sack/VertFile
+- **Issues**: https://github.com/martin-sack/VertFile/issues
 
 ## 🎯 Roadmap
 
