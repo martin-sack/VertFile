@@ -1,6 +1,6 @@
 import { PDFDocument } from 'pdf-lib';
-import sharp from 'sharp';
 import fs from 'fs/promises';
+import { createCanvas, loadImage } from 'canvas';
 
 export interface ImageToPDFOptions {
   pageSize?: 'A4' | 'Letter' | 'Legal';
@@ -22,6 +22,25 @@ const PAGE_SIZES = {
   Letter: { width: 612, height: 792 },
   Legal: { width: 612, height: 1008 },
 };
+
+async function imageBufferToFormat(buffer: Buffer, targetFormat: 'png' | 'jpeg'): Promise<Buffer> {
+  try {
+    const img = await loadImage(buffer);
+    const canvas = createCanvas(img.width, img.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    
+    const mimeType = targetFormat === 'png' ? 'image/png' : 'image/jpeg';
+    return canvas.toBuffer(mimeType as any, { quality: 0.95 });
+  } catch (error) {
+    throw new Error(`Failed to convert image format: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
+  const img = await loadImage(buffer);
+  return { width: img.width, height: img.height };
+}
 
 export async function imageToPDF(
   inputPaths: string[],
@@ -49,25 +68,29 @@ export async function imageToPDF(
 
     // Process each image
     for (const inputPath of inputPaths) {
-      // Read and process image
+      // Read image
       const imageBuffer = await fs.readFile(inputPath);
       
-      // Get image metadata
-      const metadata = await sharp(imageBuffer).metadata();
-      const imgWidth = metadata.width || 0;
-      const imgHeight = metadata.height || 0;
+      // Get image dimensions
+      const { width: imgWidth, height: imgHeight } = await getImageDimensions(imageBuffer);
 
-      // Embed image in PDF
+      // Determine format and embed image
       let image;
-      const format = metadata.format;
+      const ext = inputPath.toLowerCase();
       
-      if (format === 'png') {
-        image = await pdfDoc.embedPng(imageBuffer);
-      } else if (format === 'jpeg' || format === 'jpg') {
-        image = await pdfDoc.embedJpg(imageBuffer);
-      } else {
-        // Convert to JPEG for other formats
-        const jpegBuffer = await sharp(imageBuffer).jpeg().toBuffer();
+      try {
+        if (ext.endsWith('.png')) {
+          image = await pdfDoc.embedPng(imageBuffer);
+        } else if (ext.endsWith('.jpg') || ext.endsWith('.jpeg')) {
+          image = await pdfDoc.embedJpg(imageBuffer);
+        } else {
+          // Convert to JPEG for other formats
+          const jpegBuffer = await imageBufferToFormat(imageBuffer, 'jpeg');
+          image = await pdfDoc.embedJpg(jpegBuffer);
+        }
+      } catch (embedError) {
+        // If embedding fails, try converting to JPEG
+        const jpegBuffer = await imageBufferToFormat(imageBuffer, 'jpeg');
         image = await pdfDoc.embedJpg(jpegBuffer);
       }
 

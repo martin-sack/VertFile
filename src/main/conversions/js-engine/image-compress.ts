@@ -1,5 +1,6 @@
-import sharp from 'sharp';
+import fs from 'fs/promises';
 import path from 'path';
+import { createCanvas, loadImage } from 'canvas';
 
 export interface ImageCompressOptions {
   quality?: number; // 0-100
@@ -25,38 +26,44 @@ export async function compressImage(
     const { quality = 80, maxWidth, maxHeight } = options;
 
     // Get original file size
-    const fs = await import('fs/promises');
     const stats = await fs.stat(inputPath);
     const originalSize = stats.size;
 
-    // Get image format
-    const ext = path.extname(inputPath).toLowerCase().slice(1);
+    // Read image file
+    const imageBuffer = await fs.readFile(inputPath);
+    
+    // Load image using canvas
+    const img = await loadImage(imageBuffer);
+    let width = img.width;
+    let height = img.height;
 
-    // Process image
-    let pipeline = sharp(inputPath);
-
-    // Resize if dimensions specified
+    // Calculate new dimensions if resize is needed
     if (maxWidth || maxHeight) {
-      pipeline = pipeline.resize(maxWidth, maxHeight, {
-        fit: 'inside',
-        withoutEnlargement: true,
-      });
+      const widthRatio = maxWidth ? maxWidth / width : Infinity;
+      const heightRatio = maxHeight ? maxHeight / height : Infinity;
+      const ratio = Math.min(widthRatio, heightRatio, 1); // Don't enlarge
+
+      width = Math.floor(width * ratio);
+      height = Math.floor(height * ratio);
     }
 
-    // Apply compression based on format
-    if (ext === 'jpeg' || ext === 'jpg') {
-      pipeline = pipeline.jpeg({ quality, mozjpeg: true });
-    } else if (ext === 'png') {
-      pipeline = pipeline.png({ quality, compressionLevel: 9 });
-    } else if (ext === 'webp') {
-      pipeline = pipeline.webp({ quality });
-    } else {
-      // Default to JPEG for unknown formats
-      pipeline = pipeline.jpeg({ quality });
-    }
+    // Create canvas and draw image
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
 
-    // Save compressed image
-    await pipeline.toFile(outputPath);
+    // Get output format
+    const ext = path.extname(inputPath).toLowerCase();
+    const format = ext === '.png' ? 'image/png' : 'image/jpeg';
+
+    // Convert quality from 0-100 to 0-1
+    const qualityRatio = quality / 100;
+
+    // Get compressed buffer
+    const compressedBuffer = canvas.toBuffer(format as any, { quality: qualityRatio });
+
+    // Write to output file
+    await fs.writeFile(outputPath, compressedBuffer);
 
     // Get compressed file size
     const compressedStats = await fs.stat(outputPath);
@@ -68,7 +75,7 @@ export async function compressImage(
       outputPath,
       originalSize,
       compressedSize,
-      compressionRatio,
+      compressionRatio: Math.max(0, compressionRatio), // Ensure non-negative
     };
   } catch (error) {
     return {
