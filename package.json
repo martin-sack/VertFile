@@ -27,7 +27,7 @@
     "browser-image-compression": "^2.0.2",
     "jspdf": "^2.5.1",
     "papaparse": "^5.4.1",
-    "canvas": "^2.11.2"
+    "jimp": "^0.22.12"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

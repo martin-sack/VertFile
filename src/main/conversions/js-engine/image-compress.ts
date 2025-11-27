@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { createCanvas, loadImage } from 'canvas';
+import Jimp from 'jimp';
 
 export interface ImageCompressOptions {
   quality?: number; // 0-100
@@ -29,41 +29,22 @@ export async function compressImage(
     const stats = await fs.stat(inputPath);
     const originalSize = stats.size;
 
-    // Read image file
-    const imageBuffer = await fs.readFile(inputPath);
-    
-    // Load image using canvas
-    const img = await loadImage(imageBuffer);
-    let width = img.width;
-    let height = img.height;
+    // Read and process image with Jimp
+    const image = await Jimp.read(inputPath);
 
-    // Calculate new dimensions if resize is needed
+    // Resize if dimensions specified
     if (maxWidth || maxHeight) {
-      const widthRatio = maxWidth ? maxWidth / width : Infinity;
-      const heightRatio = maxHeight ? maxHeight / height : Infinity;
-      const ratio = Math.min(widthRatio, heightRatio, 1); // Don't enlarge
-
-      width = Math.floor(width * ratio);
-      height = Math.floor(height * ratio);
+      image.scaleToFit(
+        maxWidth || Jimp.AUTO,
+        maxHeight || Jimp.AUTO
+      );
     }
 
-    // Create canvas and draw image
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, width, height);
+    // Set quality
+    image.quality(quality);
 
-    // Get output format
-    const ext = path.extname(inputPath).toLowerCase();
-    const format = ext === '.png' ? 'image/png' : 'image/jpeg';
-
-    // Convert quality from 0-100 to 0-1
-    const qualityRatio = quality / 100;
-
-    // Get compressed buffer
-    const compressedBuffer = canvas.toBuffer(format as any, { quality: qualityRatio });
-
-    // Write to output file
-    await fs.writeFile(outputPath, compressedBuffer);
+    // Save compressed image
+    await image.writeAsync(outputPath);
 
     // Get compressed file size
     const compressedStats = await fs.stat(outputPath);
@@ -75,7 +56,7 @@ export async function compressImage(
       outputPath,
       originalSize,
       compressedSize,
-      compressionRatio: Math.max(0, compressionRatio), // Ensure non-negative
+      compressionRatio: Math.max(0, compressionRatio),
     };
   } catch (error) {
     return {

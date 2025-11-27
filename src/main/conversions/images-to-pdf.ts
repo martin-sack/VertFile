@@ -3,20 +3,7 @@ import { ConversionError, ErrorCode } from './errors';
 import { ensureDirectoryExists } from './utils';
 import { PDFDocument } from 'pdf-lib';
 import fs from 'fs/promises';
-import { createCanvas, loadImage } from 'canvas';
-
-async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
-  const img = await loadImage(buffer);
-  return { width: img.width, height: img.height };
-}
-
-async function imageBufferToJpeg(buffer: Buffer): Promise<Buffer> {
-  const img = await loadImage(buffer);
-  const canvas = createCanvas(img.width, img.height);
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0);
-  return canvas.toBuffer('image/jpeg', { quality: 0.95 });
-}
+import Jimp from 'jimp';
 
 export async function convertImagesToPdf(
   inputPath: string,
@@ -33,26 +20,32 @@ export async function convertImagesToPdf(
     const pdfDoc = await PDFDocument.create();
 
     for (const imagePath of imagePaths) {
-      const imageBuffer = await fs.readFile(imagePath);
-      const { width, height } = await getImageDimensions(imageBuffer);
+      // Read image with Jimp
+      const jimpImage = await Jimp.read(imagePath);
+      const width = jimpImage.getWidth();
+      const height = jimpImage.getHeight();
 
-      // Try to embed image directly
-      let image;
-      const ext = imagePath.toLowerCase();
+      // Get image buffer
+      const mimeType = jimpImage.getMIME();
+      let imageBuffer: Buffer;
       
+      if (mimeType === Jimp.MIME_PNG) {
+        imageBuffer = await jimpImage.getBufferAsync(Jimp.MIME_PNG);
+      } else {
+        imageBuffer = await jimpImage.getBufferAsync(Jimp.MIME_JPEG);
+      }
+
+      // Embed image
+      let image;
       try {
-        if (ext.endsWith('.png')) {
+        if (mimeType === Jimp.MIME_PNG) {
           image = await pdfDoc.embedPng(imageBuffer);
-        } else if (ext.endsWith('.jpg') || ext.endsWith('.jpeg')) {
-          image = await pdfDoc.embedJpg(imageBuffer);
         } else {
-          // Convert to JPEG for other formats
-          const jpegBuffer = await imageBufferToJpeg(imageBuffer);
-          image = await pdfDoc.embedJpg(jpegBuffer);
+          image = await pdfDoc.embedJpg(imageBuffer);
         }
       } catch (embedError) {
-        // If embedding fails, convert to JPEG
-        const jpegBuffer = await imageBufferToJpeg(imageBuffer);
+        // Fallback to JPEG
+        const jpegBuffer = await jimpImage.getBufferAsync(Jimp.MIME_JPEG);
         image = await pdfDoc.embedJpg(jpegBuffer);
       }
 

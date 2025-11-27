@@ -1,6 +1,6 @@
 import { PDFDocument } from 'pdf-lib';
 import fs from 'fs/promises';
-import { createCanvas, loadImage } from 'canvas';
+import Jimp from 'jimp';
 
 export interface ImageToPDFOptions {
   pageSize?: 'A4' | 'Letter' | 'Legal';
@@ -22,25 +22,6 @@ const PAGE_SIZES = {
   Letter: { width: 612, height: 792 },
   Legal: { width: 612, height: 1008 },
 };
-
-async function imageBufferToFormat(buffer: Buffer, targetFormat: 'png' | 'jpeg'): Promise<Buffer> {
-  try {
-    const img = await loadImage(buffer);
-    const canvas = createCanvas(img.width, img.height);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    
-    const mimeType = targetFormat === 'png' ? 'image/png' : 'image/jpeg';
-    return canvas.toBuffer(mimeType as any, { quality: 0.95 });
-  } catch (error) {
-    throw new Error(`Failed to convert image format: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
-
-async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
-  const img = await loadImage(buffer);
-  return { width: img.width, height: img.height };
-}
 
 export async function imageToPDF(
   inputPaths: string[],
@@ -68,29 +49,33 @@ export async function imageToPDF(
 
     // Process each image
     for (const inputPath of inputPaths) {
-      // Read image
-      const imageBuffer = await fs.readFile(inputPath);
-      
-      // Get image dimensions
-      const { width: imgWidth, height: imgHeight } = await getImageDimensions(imageBuffer);
+      // Read image with Jimp
+      const jimpImage = await Jimp.read(inputPath);
+      const imgWidth = jimpImage.getWidth();
+      const imgHeight = jimpImage.getHeight();
 
-      // Determine format and embed image
-      let image;
-      const ext = inputPath.toLowerCase();
+      // Convert to buffer in appropriate format
+      const mimeType = jimpImage.getMIME();
+      let imageBuffer: Buffer;
       
+      if (mimeType === Jimp.MIME_PNG) {
+        imageBuffer = await jimpImage.getBufferAsync(Jimp.MIME_PNG);
+      } else {
+        // Convert to JPEG for all other formats
+        imageBuffer = await jimpImage.getBufferAsync(Jimp.MIME_JPEG);
+      }
+
+      // Embed image in PDF
+      let image;
       try {
-        if (ext.endsWith('.png')) {
+        if (mimeType === Jimp.MIME_PNG) {
           image = await pdfDoc.embedPng(imageBuffer);
-        } else if (ext.endsWith('.jpg') || ext.endsWith('.jpeg')) {
-          image = await pdfDoc.embedJpg(imageBuffer);
         } else {
-          // Convert to JPEG for other formats
-          const jpegBuffer = await imageBufferToFormat(imageBuffer, 'jpeg');
-          image = await pdfDoc.embedJpg(jpegBuffer);
+          image = await pdfDoc.embedJpg(imageBuffer);
         }
       } catch (embedError) {
-        // If embedding fails, try converting to JPEG
-        const jpegBuffer = await imageBufferToFormat(imageBuffer, 'jpeg');
+        // If embedding fails, convert to JPEG and try again
+        const jpegBuffer = await jimpImage.getBufferAsync(Jimp.MIME_JPEG);
         image = await pdfDoc.embedJpg(jpegBuffer);
       }
 
