@@ -94,5 +94,9 @@
       "height": 380
     }
   },
-  "publish": null
+  "publish": {
+    "provider": "github",
+    "owner": "martin-sack",
+    "repo": "VertFile"
+  }
 }
