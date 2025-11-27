@@ -1,5 +1,5 @@
 import { ConversionResult } from './index';
-import { ConversionError, ErrorCode } from './errors';
+import { ConversionErrorClass, ConversionErrorType } from './errors';
 import { ensureDirectoryExists } from './utils';
 import { PDFDocument } from 'pdf-lib';
 import fs from 'fs/promises';
@@ -66,12 +66,11 @@ export async function convertImagesToPdf(
     return {
       success: true,
       outputPath,
-      message: `Successfully converted ${imagePaths.length} image(s) to PDF`,
     };
   } catch (error) {
-    throw new ConversionError(
+    throw new ConversionErrorClass(
       'Failed to convert images to PDF',
-      ErrorCode.CONVERSION_FAILED,
+      ConversionErrorType.CONVERSION_FAILED,
       error instanceof Error ? error.message : undefined
     );
   }

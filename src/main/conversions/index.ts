@@ -8,6 +8,9 @@ import { convertPdfToTxt } from './pdf-to-txt';
 import { convertDocxToTxt } from './docx-to-txt';
 import { parseConversionError, formatErrorForDisplay } from './errors';
 
+// Re-export ConversionResult for use in conversion modules
+export type { ConversionResult } from '../types';
+
 export async function convertFile(job: ConversionJob): Promise<ConversionResult> {
   try {
     // Validate input file exists

@@ -22,6 +22,20 @@ export interface ConversionError {
   reason?: 'missing_tool' | 'encrypted_pdf' | 'password_required' | 'no_images_generated' | 'file_not_found' | 'permission_denied' | 'corrupted_file' | 'other';
 }
 
+// ConversionError class for throwing errors
+export class ConversionErrorClass extends Error {
+  public readonly errorType: ConversionErrorType;
+  public readonly details?: string;
+
+  constructor(message: string, errorType: ConversionErrorType = ConversionErrorType.CONVERSION_FAILED, details?: string) {
+    super(message);
+    this.name = 'ConversionError';
+    this.errorType = errorType;
+    this.details = details;
+    Object.setPrototypeOf(this, ConversionErrorClass.prototype);
+  }
+}
+
 export function parseConversionError(error: Error | string): ConversionError {
   const errorMessage = typeof error === 'string' ? error : error.message;
   const lowerMessage = errorMessage.toLowerCase();
