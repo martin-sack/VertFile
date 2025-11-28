@@ -5,7 +5,7 @@
 
 set -e
 
-SOURCE_ICON="public/file-converter-icon.png"
+SOURCE_ICON="build/file-converter-icon.png"
 BUILD_DIR="build"
 
 # Colors
