@@ -18,7 +18,7 @@ export default function Header({ onSettingsClick, onCheckUpdates, onHistoryClick
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
               <div className="relative w-14 h-14 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 border-2 border-indigo-400/30">
                 <img
-                  src="/file-converter-icon.png"
+                  src="/app-icon.png"
                   alt="File Converter Pro"
                   className="w-full h-full object-cover"
                 />
