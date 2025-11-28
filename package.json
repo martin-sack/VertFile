@@ -1,6 +1,6 @@
 {
   "name": "file-converter-pro",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Professional desktop file converter with support for PDF, Office, images, and more",
   "main": "dist/main/main.js",
   "author": "Martin Sack <lennyymartin773@gmail.com>",
